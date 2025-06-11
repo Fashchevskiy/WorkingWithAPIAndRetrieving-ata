@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Робота з API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        #loader {
+            text-align: center;
+            font-size: 18px;
+            margin: 20px;
+            display: none;
+        }
+
+        #data-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            margin-top: 0;
+        }
+
+        #search {
+            width: 100%;
+            max-width: 400px;
+            margin: 10px auto;
+            display: block;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 10px 15px;
+            margin: 0 5px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .pagination button:disabled {
+            background-color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>Список користувачів</h1>
+    <input type="text" id="search" placeholder="Пошук за ім'ям...">
+    <div id="loader">Завантаження...</div>
+    <div id="data-container"></div>
+    <div class="pagination">
+        <button id="prevPage">Попередня</button>
+        <button id="nextPage">Наступна</button>
+    </div>
+
+    <script>
+        const loader = document.getElementById('loader');
+        const container = document.getElementById('data-container');
+        const searchInput = document.getElementById('search');
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        let currentPage = 1;
+        let users = [];
+
+        async function fetchUsers(page = 1) {
+            loader.style.display = 'block';
+            try {
+                const res = await fetch(`https://reqres.in/api/users?page=${page}`);
+                if (!res.ok) throw new Error('Помилка завантаження');
+                const data = await res.json();
+                users = data.data;
+                localStorage.setItem('users', JSON.stringify(users));
+                displayUsers(users);
+                prevBtn.disabled = page === 1;
+                nextBtn.disabled = page === data.total_pages;
+            } catch (error) {
+                container.innerHTML = `<p style="color: red;">${error.message}</p>`;
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        function displayUsers(usersList) {
+            container.innerHTML = '';
+            usersList.forEach(user => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${user.avatar}" width="100%" style="border-radius: 6px;">
+                    <h3>${user.first_name} ${user.last_name}</h3>
+                    <p>Email: ${user.email}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        searchInput.addEventListener('input', () => {
+            const term = searchInput.value.toLowerCase();
+            const filtered = users.filter(user => `${user.first_name} ${user.last_name}`.toLowerCase().includes(term));
+            displayUsers(filtered);
+        });
+
+        prevBtn.onclick = () => {
+            if (currentPage > 1) {
+                currentPage--;
+                fetchUsers(currentPage);
+            }
+        };
+
+        nextBtn.onclick = () => {
+            currentPage++;
+            fetchUsers(currentPage);
+        };
+
+        // Завантаження при старті
+        window.onload = () => {
+            const cached = localStorage.getItem('users');
+            if (cached) {
+                users = JSON.parse(cached);
+                displayUsers(users);
+            }
+            fetchUsers();
+        };
+    </script>
+</body>
+</html>
